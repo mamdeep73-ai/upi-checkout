@@ -1,0 +1,12 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin</title>
+<style>body{font-family:system-ui,sans-serif;max-width:520px;margin:20px auto;padding:0 16px;background:#f5f6fa;color:#1a1d29}
+.o{background:#fff;border-radius:12px;padding:12px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 6px rgba(0,0,0,.08)}
+button{border:0;border-radius:8px;padding:8px 12px;background:#5b3df5;color:#fff;font-weight:600;cursor:pointer}
+input{padding:10px;border:1px solid #ccc;border-radius:8px;width:70%}.p{color:#d97706}.d{color:#16a34a}.x{color:#6b7280}</style></head><body>
+<h2>📋 Orders</h2><input id="sec" type="password" placeholder="SMS_SECRET"> <button onclick="load()">Dekho</button><div id="l"></div>
+<script>
+async function load(){const s=document.getElementById("sec").value;
+const r=await fetch("/api/admin/orders",{headers:{"x-secret":s}});if(!r.ok){l.textContent="Galat secret";return}
+const o=await r.json();l.innerHTML=o.map(x=>`<div class="o"><div><b>${x.id}</b><br>₹${x.amount.toFixed(2)} · <span class="${x.status==="PAID"?"d":x.status==="PENDING"?"p":"x"}">${x.status}</span></div>${x.status==="PENDING"?`<button onclick="ok('${x.id}')">Mark Paid</button>`:""}</div>`).join("")||"Koi order nahi"}
+async function ok(id){await fetch("/api/admin/confirm/"+id,{method:"POST",headers:{"x-secret":document.getElementById("sec").value}});load()}
+</script></body></html>

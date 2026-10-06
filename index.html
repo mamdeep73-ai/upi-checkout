@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UPI Checkout</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--text:#1a1d29;--muted:#6b7280;--accent:#5b3df5;--ok:#16a34a;--line:#e5e7eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1117;--card:#1a1d29;--text:#f3f4f6;--muted:#9ca3af;--line:#2b2f3e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;display:flex;justify-content:center;padding:20px}
+.wrap{width:100%;max-width:440px}.card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:20px;margin:0 0 14px}.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.row small,.muted{color:var(--muted)}.muted{font-size:13px}
+.qty button{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+.qty span{display:inline-block;min-width:24px;text-align:center}
+.total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:14px}
+.btn{width:100%;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:600;background:var(--accent);color:#fff;cursor:pointer;margin-top:14px}
+.btn.alt{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.center{text-align:center}.hidden{display:none}
+#qr{display:inline-block;background:#fff;padding:10px;border-radius:12px}
+.tick{width:72px;height:72px;border-radius:50%;background:var(--ok);color:#fff;font-size:40px;display:flex;align-items:center;justify-content:center;margin:10px auto}
+</style></head><body><div class="wrap">
+<div id="s1" class="card"><h1>🛒 Aapka Order</h1><div id="items"></div>
+<div class="total"><span>Total</span><span id="total">₹0</span></div>
+<button class="btn" id="payBtn">UPI se Pay karein</button></div>
+
+<div id="s2" class="card center hidden"><h1>UPI se Pay karein</h1>
+<div class="muted">Order ID: <b id="oid"></b></div>
+<div style="font-size:28px;font-weight:700;margin:8px 0" id="amt"></div>
+<div id="qr"></div><div class="muted" style="margin-top:8px">⚠️ Bilkul yahi amount pay karein, badlein nahi</div><div class="muted">GPay / PhonePe / Paytm se scan karein</div>
+<div class="muted" style="margin-top:12px">⏳ Payment detect ho raha hai… page band na karein</div>
+<button class="btn alt" id="backBtn">← Wapas</button></div>
+
+<div id="s3" class="card center hidden"><div class="tick">✓</div><h1>Dhanyavaad! 🎉</h1>
+<p>Aapka payment mil gaya hai aur <b>order confirm ho gaya hai</b>.</p>
+<p class="muted">Order ID: <b id="oid2"></b> | Amount: <b id="amt2"></b></p>
+<button class="btn" onclick="location.reload()">Naya Order</button></div>
+</div>
+<script>
+const cart=[{id:"tshirt",name:"Cotton T-Shirt",price:499,qty:1},{id:"mug",name:"Coffee Mug",price:199,qty:1},{id:"demo",name:"Demo Product",price:1,qty:1}];
+const $=i=>document.getElementById(i);let poll,orderId,amount;
+function render(){$("items").innerHTML=cart.map((c,i)=>`<div class="row"><div>${c.name}<br><small>₹${c.price}</small></div><div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div></div>`).join("");
+const t=cart.reduce((s,c)=>s+c.price*c.qty,0);$("total").textContent="₹"+t;$("payBtn").disabled=!t}
+function chg(i,d){cart[i].qty=Math.max(0,cart[i].qty+d);render()}
+function show(id){["s1","s2","s3"].forEach(s=>$(s).classList.toggle("hidden",s!==id))}
+$("payBtn").onclick=async()=>{
+  $("payBtn").textContent="QR ban raha hai…";
+  try{
+    const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:cart.map(c=>({id:c.id,qty:c.qty}))})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error);
+    orderId=d.orderId;amount=d.amount;
+    $("oid").textContent=orderId;$("amt").textContent="₹"+amount.toFixed(2);$("qr").innerHTML="";new QRCode($("qr"),{text:d.upi,width:200,height:200});show("s2");
+    poll=setInterval(check,3000);
+  }catch(e){alert(e.message||"Error")}
+  $("payBtn").textContent="UPI se Pay karein";
+};
+async function check(){
+  try{const r=await fetch("/api/status/"+orderId);const d=await r.json();
+  if(d.status==="PAID"){clearInterval(poll);$("oid2").textContent=orderId;$("amt2").textContent="₹"+amount.toFixed(2);show("s3")}else if(d.status==="EXPIRED"){clearInterval(poll);alert("QR expire ho gaya, dobara try karein");show("s1")}}catch(e){}
+}
+$("backBtn").onclick=()=>{clearInterval(poll);show("s1")};
+render();
+</script></body></html>

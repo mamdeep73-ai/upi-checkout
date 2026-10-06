@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: upi-checkout
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MERCHANT_UPI
+        value: 9897630623@ibl
+      - key: MERCHANT_NAME
+        value: Meri Dukaan
+      - key: SMS_SECRET
+        generateValue: true
